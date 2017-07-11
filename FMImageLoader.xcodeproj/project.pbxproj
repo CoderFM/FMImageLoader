@@ -14,6 +14,8 @@
 		15252AAC1EFDF37C00960B58 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 15252AAA1EFDF37C00960B58 /* LaunchScreen.storyboard */; };
 		15252ABA1EFDF42200960B58 /* FMImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15252AB81EFDF42200960B58 /* FMImageLoader.swift */; };
 		15252ABB1EFDF42200960B58 /* FMNetCommonValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15252AB91EFDF42200960B58 /* FMNetCommonValue.swift */; };
+		15EB979A1F14C3D7004D4A58 /* CommonFunc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15EB97981F14C3D7004D4A58 /* CommonFunc.swift */; };
+		15EB979B1F14C3D7004D4A58 /* FMNetManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15EB97991F14C3D7004D4A58 /* FMNetManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +29,8 @@
 		15252AB31EFDF3E600960B58 /* FMImageLoader-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "FMImageLoader-Bridging-Header.h"; sourceTree = "<group>"; };
 		15252AB81EFDF42200960B58 /* FMImageLoader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FMImageLoader.swift; sourceTree = "<group>"; };
 		15252AB91EFDF42200960B58 /* FMNetCommonValue.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FMNetCommonValue.swift; sourceTree = "<group>"; };
+		15EB97981F14C3D7004D4A58 /* CommonFunc.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommonFunc.swift; sourceTree = "<group>"; };
+		15EB97991F14C3D7004D4A58 /* FMNetManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FMNetManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +78,8 @@
 		15252AB71EFDF42200960B58 /* Class */ = {
 			isa = PBXGroup;
 			children = (
+				15EB97981F14C3D7004D4A58 /* CommonFunc.swift */,
+				15EB97991F14C3D7004D4A58 /* FMNetManager.swift */,
 				15252AB81EFDF42200960B58 /* FMImageLoader.swift */,
 				15252AB91EFDF42200960B58 /* FMNetCommonValue.swift */,
 			);
@@ -154,6 +160,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				15EB979B1F14C3D7004D4A58 /* FMNetManager.swift in Sources */,
+				15EB979A1F14C3D7004D4A58 /* CommonFunc.swift in Sources */,
 				15252ABA1EFDF42200960B58 /* FMImageLoader.swift in Sources */,
 				15252ABB1EFDF42200960B58 /* FMNetCommonValue.swift in Sources */,
 				15252AA41EFDF37C00960B58 /* ViewController.swift in Sources */,
@@ -324,6 +332,7 @@
 				15252AB21EFDF37C00960B58 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

@@ -8,6 +8,31 @@
 
 import Foundation
 import UIKit
+import ImageIO
+
+enum ResourceType{
+    case PNG
+    case JPG
+    case GIF
+    case WebP
+}
+
+protocol Resource {
+    var fm_url: URL { get }
+    var fm_type: ResourceType { get }
+}
+
+extension Resource {
+    var fm_type: ResourceType {
+        if self.fm_url.pathExtension == "gif" {
+            return .GIF
+        }
+        if self.fm_url.pathExtension == "webp" {
+            return .WebP
+        }
+        return .JPG
+    }
+}
 
 typealias FMImageLoaderCompleteHandle = (FMImageLoaderResult) -> ()
 
@@ -29,7 +54,7 @@ enum FMImageLoaderResult{
 
 struct FMImageLoaderOperation {
     var operation: Operation? = nil
-    let url: URL
+    let url: Resource
     var progress: Float = 0.0
     var state: FMImageLoaderOperationState = .underway
 }
@@ -49,10 +74,10 @@ class FMImageLoader: NSObject {
         self.imagePathFolder = imagePath
     }
     
-    func fm_loadImage(url: URL, placehoderImage: UIImage?, progressBlock: @escaping (Float) -> () = {(progress) in }, completeHandle: @escaping FMImageLoaderCompleteHandle) -> Void {
+    func fm_loadImage(url: Resource, placehoderImage: UIImage?, progressBlock: @escaping (Float) -> () = {(progress) in }, completeHandle: @escaping FMImageLoaderCompleteHandle) -> Void {
         
         DispatchQueue.global().async {
-            let image = self.loadCacheImage(url: url)
+            let image = self.loadCacheImage(url: url.fm_url)
             // 从缓存中取
             if image != nil {
                 print("从缓存中读取成功")
@@ -62,7 +87,7 @@ class FMImageLoader: NSObject {
             }
             print("从缓存中读取失败")
             // 缓存没有  看看是否正在下载
-            let operation = self.oprations[url.fm_md5()]
+            let operation = self.oprations[url.fm_url.fm_md5()]
             // 正在下载就返回
             if operation != nil {
                 return
@@ -72,7 +97,7 @@ class FMImageLoader: NSObject {
                 completeHandle(FMImageLoaderResult.underway(placehoderImage))
             }
             
-            self.beginStarDownload(url: url, progressBlock: progressBlock, completeHandle: completeHandle)
+            self.beginStarDownload(url: url.fm_url, progressBlock: progressBlock, completeHandle: completeHandle)
         }
     }
     
@@ -91,9 +116,15 @@ class FMImageLoader: NSObject {
                 case .success(let imagePath, let idy):
                     downloadIn = self.oprations[idy!.fm_md5]!
                     downloadIn.state = .success
-                    let image = UIImage(contentsOfFile: imagePath as! String)!
-                    self.imageCache.setObject(image, forKey: url.fm_imageName() as AnyObject)
-                    complete = FMImageLoaderResult.success(image)
+                    let isGif = downloadIn.url.fm_type == .GIF
+                    if isGif {
+                        let image = self.decoderGif(imagePath as! String)!
+                        complete = FMImageLoaderResult.success(image)
+                    } else {
+                        let image = UIImage(contentsOfFile: imagePath as! String)!
+                        self.imageCache.setObject(image, forKey: url.fm_imageName() as AnyObject)
+                        complete = FMImageLoaderResult.success(image)
+                    }
                     break
                 case.failure(let error, let idy):
                     downloadIn = self.oprations[idy!.fm_md5]!
@@ -137,7 +168,40 @@ class FMImageLoader: NSObject {
     }()
 }
 
+extension FMImageLoader {
+    func decoderGif(_ path: String) -> UIImage? {
+        guard let data = NSData(contentsOfFile: path) else {
+            return nil
+        }
+        guard let imageSource = CGImageSourceCreateWithData(data, nil) else {
+            return nil
+        }
+        var images = [UIImage]()
+        var totalTime: CGFloat = 0
+        let count = CGImageSourceGetCount(imageSource)
+        for i in 0..<count {
+            guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, i, nil) else {
+                continue
+            }
+            guard let attr = CGImageSourceCopyPropertiesAtIndex(imageSource, i, nil) as? [String : Any] else {
+                continue
+            }
+            guard let timeAttr = attr[kCGImagePropertyGIFDictionary as String] as? [String : Any] else {
+                continue
+            }
+            guard let time = timeAttr[kCGImagePropertyGIFDelayTime as String] as? NSNumber else {
+                continue
+            }
+            images.append(UIImage(cgImage: cgImage))
+            totalTime += CGFloat(time.floatValue)
+        }
+        let image = UIImage.animatedImage(with: images, duration: TimeInterval(totalTime))
+        return image
+    }
+}
+
 extension FMImageLoader{
+    
     func loadCacheImage(url: URL) -> UIImage? {
         var image = self.loadMemoryCacheImage(url: url)
         if image == nil {
@@ -154,21 +218,34 @@ extension FMImageLoader{
     func loadDiskCacheImage(url: URL) -> UIImage? {
         let path = self.imagePathFolder.appending("/\(url.fm_imageName())")
         if FileManager.default.fileExists(atPath: path){
-            return UIImage(contentsOfFile: path)
+            if path.hasSuffix("gif") {
+                return self.decoderGif(path)
+            } else {
+                return UIImage(contentsOfFile: path)
+            }
         }
         return nil
     }
 }
 
+extension String: Resource {
+    var fm_url: URL{
+        return URL(string: self)!
+    }
+}
 
-extension URL{
+extension URL: Resource{
+    
+    var fm_url: URL {
+        return self
+    }
     
     func fm_md5() -> String {
         return self.absoluteString.fm_md5
     }
     
     func fm_imageName() -> String {
-        return self.fm_md5().appending(".jpg")
+        return self.fm_md5().appending(self.pathExtension)
     }
 }
 
@@ -178,7 +255,7 @@ protocol FMImageLoaderProtocol{
 
 extension FMImageLoaderProtocol {
     
-    func fm_loadImage(url: URL, placehoderImage: UIImage?, progressBlock: @escaping (Float) -> (), placehoderShow: @escaping () -> (Bool),mainQueue: @escaping (UIImage) -> ()) -> Void{
+    func fm_loadImage(url: Resource, placehoderImage: UIImage?, progressBlock: @escaping (Float) -> (), placehoderShow: @escaping () -> (Bool),mainQueue: @escaping (UIImage) -> ()) -> Void{
         FMImageLoader.shareLoader.fm_loadImage(url: url, placehoderImage: placehoderImage, progressBlock: progressBlock, completeHandle: { (result) in
             switch result{
             case .success(let image):
@@ -201,7 +278,7 @@ extension FMImageLoaderProtocol {
 }
 
 extension UIImageView: FMImageLoaderProtocol{
-    func fm_loadImage(url: URL, placehoderImage: UIImage? = nil, progressBlock: @escaping (Float) -> () = {(progress) in }) -> Void {
+    func fm_loadImage(url: Resource, placehoderImage: UIImage? = nil, progressBlock: @escaping (Float) -> () = {(progress) in }) -> Void {
         self.fm_loadImage(url: url, placehoderImage: placehoderImage, progressBlock: progressBlock, placehoderShow: { () -> (Bool) in
             return self.image == nil
         }) { (image) in
@@ -211,7 +288,7 @@ extension UIImageView: FMImageLoaderProtocol{
 }
 
 extension UIButton: FMImageLoaderProtocol {
-    func fm_loadImage(url: URL, placehoderImage: UIImage? = nil, state: UIControlState,progressBlock: @escaping (Float) -> () = {(progress) in }) -> Void {
+    func fm_loadImage(url: Resource, placehoderImage: UIImage? = nil, state: UIControlState,progressBlock: @escaping (Float) -> () = {(progress) in }) -> Void {
         self.fm_loadImage(url: url, placehoderImage: placehoderImage, progressBlock: progressBlock, placehoderShow: { () -> (Bool) in
             return self.image(for: state) == nil
         }) { (image) in
@@ -219,7 +296,7 @@ extension UIButton: FMImageLoaderProtocol {
         }
     }
     
-    func fm_loadBgImage(url: URL, placehoderImage: UIImage? = nil, state: UIControlState,progressBlock: @escaping (Float) -> () = {(progress) in }) -> Void {
+    func fm_loadBgImage(url: Resource, placehoderImage: UIImage? = nil, state: UIControlState,progressBlock: @escaping (Float) -> () = {(progress) in }) -> Void {
         self.fm_loadImage(url: url, placehoderImage: placehoderImage, progressBlock: progressBlock, placehoderShow: { () -> (Bool) in
             return self.backgroundImage(for: state) == nil
         }) { (image) in
